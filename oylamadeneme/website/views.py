@@ -94,6 +94,13 @@ def vote(poll_id):
 
     if request.method == 'POST':
         choice = request.form.get('choice')
+        vote_code = request.form.get('vote_code')  # Kullanıcıdan gelen oylama kodu
+
+        # Oylama kodunu kontrol edelim
+        if vote_code != poll.vote_code:
+            flash('Geçersiz oylama kodu.', category='error')
+            return redirect(url_for('views.home'))
+
         new_vote = Vote(user_id=current_user.id, poll_id=poll_id, choice=choice)
         db.session.add(new_vote)
         db.session.commit()
@@ -103,6 +110,7 @@ def vote(poll_id):
 
     options = poll.get_options()
     return render_template("vote.html", user=current_user, poll=poll, options=options)
+
 
 @views.route('/poll/<int:poll_id>/results')
 @login_required
