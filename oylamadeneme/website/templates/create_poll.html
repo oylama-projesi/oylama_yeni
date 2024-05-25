@@ -19,6 +19,20 @@
       <label for="group_id">Grup</label>
       {{ form.group_id(class="form-control") }}
   </div>
+  <div class="form-group">
+      <label for="duration">Aktif Kalma Süresi</label>
+      <div class="row">
+          <div class="col-md-4">
+              <input type="number" id="days" name="days" class="form-control" placeholder="Gün" min="0" required>
+          </div>
+          <div class="col-md-4">
+              <input type="number" id="hours" name="hours" class="form-control" placeholder="Saat" min="0" max="23" required>
+          </div>
+          <div class="col-md-4">
+              <input type="number" id="minutes" name="minutes" class="form-control" placeholder="Dakika" min="0" max="59" required>
+          </div>
+      </div>
+  </div>
   <br>
   <button type="submit" class="btn btn-primary">Anket Oluştur</button>
 </form>
