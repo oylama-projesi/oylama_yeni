@@ -36,6 +36,7 @@ class Poll(db.Model):
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     vote_code = db.Column(db.String(20), nullable=False, unique=True)
+    end_time = db.Column(db.DateTime, nullable=True)
 
     def set_options(self, options):
         self.options = json.dumps(options)
