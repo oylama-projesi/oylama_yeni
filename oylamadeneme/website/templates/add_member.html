@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Kullanıcı Ekle</h1>
+  <form method="POST" action="{{ url_for('views.add_member') }}">
+    {{ form.hidden_tag() }}
+    <div>
+      {{ form.user_id.label }}: {{ form.user_id }}
+    </div>
+    <div>
+      {{ form.group_id.label }}: {{ form.group_id }}
+    </div>
+    <div>
+      {{ form.submit }}
+    </div>
+  </form>
+{% endblock %}
