@@ -8,6 +8,7 @@ from . import db
 import json
 from .models import get_user_votes,get_user_groups
 from .decorators import admin_required 
+from datetime import datetime,timedelta
 
 views = Blueprint('views', __name__)
 
@@ -20,6 +21,7 @@ def home():
 def create_vote_code():
     """Rastgele bir oy verme kodu oluşturur."""
     return ''.join(random.choices(string.ascii_letters + string.digits, k=7))
+
 @views.route('/create_group', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -59,24 +61,31 @@ def create_poll():
     form = OylamaForm()
     user_groups = Group.query.join(Member).filter(Member.user_id == current_user.id).all()
     form.group_id.choices = [(group.id, group.name) for group in user_groups]
-    
+
     if form.validate_on_submit():
         question = form.question.data
-        options = form.options.data.split('\n')
+        options = [option.strip() for option in form.options.data.split('\n') if option.strip()]
         group_id = form.group_id.data
+        days = form.days.data
+        hours = form.hours.data
+        minutes = form.minutes.data
+
+        duration = timedelta(days=days, hours=hours, minutes=minutes)  # Aktif kalma süresini oluşturun
+
+        # Anketin bitiş zamanını hesaplayın
+        end_time = datetime.utcnow() + duration
 
         vote_code = create_vote_code()
 
-        new_poll = Poll(question=question, options=json.dumps(options), group_id=group_id, created_by=current_user.id, vote_code=vote_code)
+        new_poll = Poll(question=question, options=json.dumps(options), group_id=group_id, created_by=current_user.id, vote_code=vote_code, end_time=end_time)
         db.session.add(new_poll)
         db.session.commit()
 
         flash(f"Anket başarıyla oluşturuldu! \nOylama Katılım Kodu: {vote_code}", category='success')
-        
-        return redirect(url_for('views.home'))
-    
-    return render_template('create_poll.html', user=current_user, form=form)
 
+        return redirect(url_for('views.home'))
+
+    return render_template('create_poll.html', user=current_user, form=form)
 
 @views.route('/vote/<int:poll_id>', methods=['GET', 'POST'])
 @login_required
@@ -92,15 +101,13 @@ def vote(poll_id):
         flash('Bu oylamaya zaten katıldınız.', category='error')
         return redirect(url_for('views.home'))
 
+    # Oylama süresi kontrolü
+    if poll.end_time and poll.end_time < datetime.utcnow():
+        flash('Oylama süresi dolmuştur, oy kullanamazsınız.', category='error')
+        return redirect(url_for('views.home'))
+
     if request.method == 'POST':
         choice = request.form.get('choice')
-        vote_code = request.form.get('vote_code')  # Kullanıcıdan gelen oylama kodu
-
-        # Oylama kodunu kontrol edelim
-        if vote_code != poll.vote_code:
-            flash('Geçersiz oylama kodu.', category='error')
-            return redirect(url_for('views.home'))
-
         new_vote = Vote(user_id=current_user.id, poll_id=poll_id, choice=choice)
         db.session.add(new_vote)
         db.session.commit()
@@ -111,13 +118,17 @@ def vote(poll_id):
     options = poll.get_options()
     return render_template("vote.html", user=current_user, poll=poll, options=options)
 
-
 @views.route('/poll/<int:poll_id>/results')
 @login_required
 def view_results(poll_id):
     poll = Poll.query.get(poll_id)
     if not poll:
         flash('Anket bulunamadı.', category='error')
+        return redirect(url_for('views.home'))
+
+    # Bitiş zamanını kontrol et
+    if poll.end_time and poll.end_time > datetime.utcnow():
+        flash('Oylama sonuçları henüz erişilebilir değil.', category='error')
         return redirect(url_for('views.home'))
 
     votes = Vote.query.filter_by(poll_id=poll_id).all()
